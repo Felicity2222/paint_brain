@@ -4,6 +4,20 @@
 #include <math.h> 
 #include "lodepng/lodepng.h"
 
+//очередь
+typedef struct Node {
+    int x, y;
+    struct Node *next;
+} Node;
+
+typedef struct {
+    Node *front;
+    Node *rear;
+} Queue;
+void initQueue(Queue *q);
+void push_queue(Queue *q, int x, int y);
+Node *pop_queue(Queue *q);
+
 //загрузка рисунка
 unsigned char* load_png(const char* filename, unsigned int* width, unsigned int* height) 
 {
@@ -98,7 +112,7 @@ void to_grey(unsigned char *pic, unsigned char *bw_pic, int size_pic){
 		int g = pic[i+2];
 		int b = pic[i+3];
 		int alpha = pic[i];
-		int grey = r*.3 + g*0.5 + b*0.11;// + alpha*0.5;
+		int grey = r*.3 + g*0.5 + b*0.11 + alpha*0.5;
 		bw_pic[i/4]=grey;
 	}
 } 
@@ -185,10 +199,11 @@ void erode(unsigned char *pic, int width, int height) {
 	free(bw_pic);
 }
 
+// делатация изображения
 void dilate(unsigned char *pic, int width, int height) {
 	unsigned char* bw_pic = (unsigned char*)calloc(width*height,sizeof(unsigned char));
 	deep_copy(pic, bw_pic, width*height);
-	int r=1; //радиус эрозии
+	int r=2; //радиус делатации
 	for(int i = height-r; i>r; i--)
 		for(int j = width-r; j>r; j--){
 			int res = 0;
@@ -201,6 +216,42 @@ void dilate(unsigned char *pic, int width, int height) {
 		}
 	deep_copy(bw_pic, pic, width*height); 
 	free(bw_pic);
+}
+
+
+void fill(unsigned char *pic, int width, int height, int start_x, int start_y, char new_color){
+	char cur_color = pic[start_y*width+start_x];
+	Queue queue;
+	initQueue(&queue);
+	if(cur_color==new_color) return;
+	push_queue(&queue,start_x,start_y);
+
+	while(queue.front){
+		int x,y;
+
+		Node* run = pop_queue(&queue);
+		x = run->x;
+		y = run->y;
+		free(run);
+		if(x<0 || y<0 || x>=width || y>=height) continue;
+		if(pic[y*width+x] == cur_color ){
+			pic[y*width+x] = new_color;
+
+			if((y+1<height)&& (pic[(y+1)*width+x] == cur_color))push_queue(&queue,x,y+1);
+			if((y-1>=0)&& (pic[(y-1)*width+x] == cur_color))push_queue(&queue,x,y-1);
+			if((x+1<width)&& (pic[(y)*width+x+1] == cur_color)) push_queue(&queue,x+1,y);
+			if((x-1>=0)&& (pic[(y)*width+x-1] == cur_color)) push_queue(&queue,x-1,y);
+		}
+	}
+}
+void difficult_colorization(unsigned char *pic, int width, int height, int start_x, int start_y){
+	int color = 15;
+	for(int i=start_x;i<width-10;i+=10)
+		for(int j=start_y; j<height-10; j+=10)
+			{
+				fill(pic, width, height, i, j, color);
+				color= (color+7)%255;
+		}
 }
 
 int main() 
@@ -276,11 +327,9 @@ int main()
     write_png("erode.png", finish, width, height);
 	printf("Выполнено. \nПромежуточный результат сохранен в файл erode.png\n");
 	
-	//Раскраска
-	printf("Раскраска изображения ...  ");
-    color(blr_pic, finish, bw_size); 
-    write_png("picture_out.png", finish, width, height);
-	printf("Выполнено. \nПромежуточный результат сохранен в файл picture_out.png\n");
+	
+	
+
 	
 	//дилатация изображения
 	printf("Дилатация изображения ...  ");
@@ -289,8 +338,16 @@ int main()
     write_png("dilate.png", finish, width, height);
 	printf("Выполнено. \nПромежуточный результат сохранен в файл dilate.png\n");
 	
+	difficult_colorization(blr_pic, width, height, 10, 10);
+	bw_to_pic(finish, blr_pic, size);
+    write_png("finish.png", finish, width, height);
+	printf("Выполнено. \n Результат сохранен в файл finish.png\n");
 	
-    
+	//Раскраска
+	printf("Раскраска изображения ...  ");
+    color(blr_pic, finish, bw_size); 
+    write_png("picture_out.png", finish, width, height);
+	printf("Выполнено. \nПромежуточный результат сохранен в файл picture_out.png\n");
     
     // не забыли почистить память!
     free(bw_pic); 
@@ -299,4 +356,28 @@ int main()
     free(picture); //*/
     
     return 0; 
+}
+
+//Очередь
+void initQueue(Queue *q) {
+    q->front = NULL;
+    q->rear = NULL;
+}
+
+void push_queue(Queue *q, int x, int y) {
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    newNode->x = x;
+    newNode->y = y;
+    newNode->next = NULL;
+    if (!q->rear) q->front = newNode;
+    else q->rear->next = newNode;
+    q->rear = newNode;
+}
+
+Node *pop_queue(Queue *q) {
+    if (!q->front) return NULL;
+	Node *temp = q->front;
+    q->front = q->front->next;
+    if (!q->front) q->rear = NULL;
+    return temp;
 }
