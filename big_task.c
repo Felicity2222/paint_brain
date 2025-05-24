@@ -245,12 +245,12 @@ void fill(unsigned char *pic, int width, int height, int start_x, int start_y, c
 	}
 }
 void difficult_colorization(unsigned char *pic, int width, int height, int start_x, int start_y){
-	int color = 15;
-	for(int i=start_x;i<width-10;i+=10)
-		for(int j=start_y; j<height-10; j+=10)
-			{
+	int color = 1, cnt=4;
+	for(int i=start_x;i<width-5;i+=5)
+		for(int j=start_y; j<height-5; j+=5){
 				fill(pic, width, height, i, j, color);
-				color= (color+7)%255;
+				color= (color+cnt);
+				cnt++;
 		}
 }
 
@@ -292,13 +292,13 @@ int main()
 	Gauss_blur(bw_pic, blr_pic, width, height); 
 	bw_to_pic(finish, blr_pic, size);
 	simple_colorization(finish,size);
-	contrast(finish, size,45, 175); 
+	contrast(finish, size,5, 175); 
 	write_png("simple.png", finish, width, height);
 	printf("Выполнено. \nПромежуточный результат сохранен в файл simple.png\n");
 	
 	//контраст
 	printf("Увеличение контраста...  ");
-	contrast(bw_pic, bw_size,15, 125); 
+	contrast(bw_pic, bw_size,45, 125); 
 	bw_to_pic(finish, bw_pic, size);
 	write_png("contrast.png", finish, width, height);
 	printf("Выполнено. \nПромежуточный результат сохранен в файл contrast.png\n");
